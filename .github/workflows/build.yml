@@ -1,0 +1,56 @@
+name: Build and release
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-lib:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup environments
+        run: >
+          write-host "Installing dependencies on msys2 ....♻️\n";
+          C:\msys64\usr\bin\pacman.exe -Sy --needed --noconfirm mingw-w64-x86_64-gcc mingw-w64-x86_64-pkgconf
+          mingw-w64-x86_64-python mingw-w64-x86_64-python-pip mingw-w64-x86_64-libadwaita 
+          mingw-w64-x86_64-gst-devtools mingw-w64-x86_64-gtk4-media-gstreamer mingw-w64-x86_64-gst-libav 
+          mingw-w64-x86_64-gst-plugins-rs mingw-w64-x86_64-gst-plugins-good mingw-w64-x86_64-gst-plugins-bad mingw-w64-x86_64-gst-plugins-ugly;
+          C:\msys64\usr\bin\pacman.exe -Syu --noconfirm;
+          write-host "Successfully installed.✅\n";
+          write-host "Installing meson and ninja ....♻️\n";
+          pip3 install meson ninja;
+          write-host "Successfully installed.✅\n";
+
+      - name: Building packages ……
+        run: |
+          $env:Path = "C:\msys64\mingw64\bin;C:\msys64\mingw64\lib;C:\msys64\mingw64\include;C:\msys64\usr\bin;" + $env:Path;
+          $env:LIB = "C:\msys64\mingw64\lib;" + $env:LIB;
+          $env:INCLUDE = "C:\msys64\mingw64\include;" + $env:INCLUDE;
+          mkdir clapper-dist
+          $env:CC=gcc;$env:LD=ld;meson setup builddir -Dgst-plugin=enabled -Dclapper-app=disabled -Dglimporter=disabled -Dgluploader=disabled -Drawimporter=disabled
+          cd builddir && meson compile
+          meson install --destdir=D:\a\clapper\clapper\clapper-dist
+          write-host "packaging dev files ……✅\n"
+          7z.exe a ../clapper-dev.7z ../clapper-dist/*
+
+      - name: Set TAG_NAME
+        shell: pwsh
+        run: |
+          $tagName = "clapper-dev-windows-" + (Get-Date -Format "yyyy-MM-dd")
+          "`nTAG_NAME=$tagName" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Upload Github Assets
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: |
+            *.7z
+          tag_name: ${{ env.TAG_NAME }}
