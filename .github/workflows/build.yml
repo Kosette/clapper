@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - master
+      - ms-win
 
 jobs:
   build-lib:
@@ -34,23 +34,31 @@ jobs:
           $env:LIB = "C:\msys64\mingw64\lib;" + $env:LIB;
           $env:INCLUDE = "C:\msys64\mingw64\include;" + $env:INCLUDE;
           mkdir clapper-dist
-          $env:CC=gcc;$env:LD=ld;meson setup builddir -Dgst-plugin=enabled -Dclapper-app=disabled -Dglimporter=disabled -Dgluploader=disabled -Drawimporter=disabled
+          $env:CC=gcc;$env:LD=ld;meson setup builddir
           cd builddir && meson compile
           meson install --destdir=D:\a\clapper\clapper\clapper-dist
           write-host "packaging dev files ……✅\n"
           7z.exe a ../clapper-dev.7z ../clapper-dist/*
-
-      - name: Set TAG_NAME
-        shell: pwsh
-        run: |
-          $tagName = "clapper-dev-windows-" + (Get-Date -Format "yyyy-MM-dd")
-          "`nTAG_NAME=$tagName" | Out-File -FilePath $env:GITHUB_ENV -Append
-
-      - name: Upload Github Assets
-        uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Upload assets
+        uses: actions/upload-artifact@v4
         with:
-          files: |
-            *.7z
-          tag_name: ${{ env.TAG_NAME }}
+          name: clapper-win
+          path: |
+            clapper-dev.7z
+          retention-days: 3d
+
+      # - name: Set TAG_NAME
+      #   shell: pwsh
+      #   run: |
+      #     $tagName = "clapper-dev-windows-" + (Get-Date -Format "yyyy-MM-dd")
+      #     "`nTAG_NAME=$tagName" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      # - name: Upload Github Assets
+      #   uses: softprops/action-gh-release@v2
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     files: |
+      #       *.7z
+      #     tag_name: ${{ env.TAG_NAME }}
