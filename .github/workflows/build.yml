@@ -34,12 +34,12 @@ jobs:
           $env:LIB = "C:\msys64\mingw64\lib;" + $env:LIB;
           $env:INCLUDE = "C:\msys64\mingw64\include;" + $env:INCLUDE;
           mkdir clapper-dist
-          $env:CC=gcc;$env:LD=ld;meson setup builddir
+          meson setup builddir
           cd builddir && meson compile
           meson install --destdir=D:\a\clapper\clapper\clapper-dist
           write-host "packaging dev files ……✅\n"
           7z.exe a ../clapper-dev.7z ../clapper-dist/*
-      
+
       - name: Upload assets
         uses: actions/upload-artifact@v4
         with:

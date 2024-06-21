@@ -5,3 +5,7 @@ builddir/
 
 # flatpak
 .flatpak-builder/
+
+# python env
+.clapper/
+/.python-version
