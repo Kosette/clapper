@@ -6,7 +6,7 @@ on:
       - master
 
 jobs:
-  build-lib:
+  build-libclapper:
     runs-on: windows-latest
     permissions:
       contents: write
@@ -39,7 +39,7 @@ jobs:
         shell: msys2 {0}
         run: |
           mkdir clapper-dist
-          meson setup builddir --prefix=$GITHUB_WORKSPACE/clapper-dist
+          meson setup builddir --prefix=$GITHUB_WORKSPACE/clapper-dist -Dclapper-app=disabled
           cd builddir && meson compile
           meson install 
           
