@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include <gst/tag/tag.h>
+
 #include "clapper-player.h"
 #include "clapper-queue.h"
 #include "clapper-enums.h"
@@ -53,6 +55,11 @@ struct _ClapperPlayer
    * different thread, thus needs a lock */
   ClapperMediaItem *pending_item;
 
+  /* Pending tags/toc that arrive before stream start.
+   * To be applied to "played_item", thus no lock needed. */
+  GstTagList *pending_tags;
+  GstToc *pending_toc;
+
   GstElement *playbin;
 
   GstBus *bus;
@@ -80,6 +87,9 @@ struct _ClapperPlayer
   gboolean pending_eos; // when pausing due to EOS
   gint eos; // atomic integer
 
+  /* Set adaptive props immediately */
+  GstElement *adaptive_demuxer;
+
   /* Playbin2 compat */
   gint n_video, n_audio, n_text;
 
@@ -97,6 +107,10 @@ struct _ClapperPlayer
   gboolean subtitles_enabled;
   gchar *download_dir;
   gboolean download_enabled;
+  guint start_bitrate;
+  guint min_bitrate;
+  guint max_bitrate;
+  guint bandwidth;
   gdouble audio_offset;
   gdouble subtitle_offset;
 };
