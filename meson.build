@@ -1,5 +1,5 @@
 project('clapper', 'c',
-  version: '0.7.0',
+  version: '0.9.0',
   meson_version: '>= 0.64.0',
   license: 'LGPL-2.1-or-later AND GPL-3.0-or-later', # LGPL-2.1+ for libs and gst-plugin, GPL-3.0+ for app
   default_options: [
@@ -130,6 +130,7 @@ endif
 
 subdir('src')
 subdir('doc')
+subdir('pkgs')
 
 meson.add_devenv(devenv)
 

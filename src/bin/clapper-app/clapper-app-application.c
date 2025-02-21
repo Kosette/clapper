@@ -28,7 +28,7 @@
 #include "clapper-app-uri-dialog.h"
 #include "clapper-app-info-window.h"
 #include "clapper-app-preferences-window.h"
-#include "clapper-app-about-window.h"
+#include "clapper-app-about-dialog.h"
 #include "clapper-app-utils.h"
 
 #define PERCENTAGE_ROUND(a) (round ((gdouble) a / 0.01) * 0.01)
@@ -334,6 +334,23 @@ add_uri (GSimpleAction *action, GVariant *param, gpointer user_data)
 }
 
 static void
+clear_queue (GSimpleAction *action, GVariant *param, gpointer user_data)
+{
+  GtkApplication *gtk_app = GTK_APPLICATION (user_data);
+  GtkWindow *window = gtk_application_get_active_window (gtk_app);
+  ClapperPlayer *player;
+  ClapperQueue *queue;
+
+  while (window && !CLAPPER_APP_IS_WINDOW (window))
+    window = gtk_window_get_transient_for (window);
+
+  player = clapper_app_window_get_player (CLAPPER_APP_WINDOW (window));
+  queue = clapper_player_get_queue (player);
+
+  clapper_queue_clear (queue);
+}
+
+static void
 new_window (GSimpleAction *action, GVariant *param, gpointer user_data)
 {
   GtkApplication *gtk_app = GTK_APPLICATION (user_data);
@@ -382,10 +399,12 @@ static void
 show_about (GSimpleAction *action, GVariant *param, gpointer user_data)
 {
   GtkApplication *gtk_app = GTK_APPLICATION (user_data);
-  GtkWidget *about_window;
+  GtkWindow *window;
+  GtkWidget *about_dialog;
 
-  about_window = clapper_app_about_window_new (gtk_app);
-  gtk_window_present (GTK_WINDOW (about_window));
+  window = gtk_application_get_active_window (gtk_app);
+  about_dialog = clapper_app_about_dialog_new ();
+  adw_dialog_present (ADW_DIALOG (about_dialog), GTK_WIDGET (window));
 }
 
 GApplication *
@@ -692,6 +711,7 @@ clapper_app_application_constructed (GObject *object)
   static const GActionEntry app_actions[] = {
     { "add-files", add_files, NULL, NULL, NULL },
     { "add-uri", add_uri, NULL, NULL, NULL },
+    { "clear-queue", clear_queue, NULL, NULL, NULL },
     { "new-window", new_window, NULL, NULL, NULL },
     { "info", show_info, NULL, NULL, NULL },
     { "preferences", show_preferences, NULL, NULL, NULL },

@@ -22,6 +22,11 @@
 #include <gst/gst.h>
 #include <libpeas.h>
 
+#ifdef G_OS_WIN32
+#include <windows.h>
+static HMODULE _enhancers_dll_handle = NULL;
+#endif
+
 #include "clapper-enhancers-loader-private.h"
 
 #define ENHANCER_INTERFACES "X-Interfaces"
@@ -35,6 +40,18 @@ GST_DEBUG_CATEGORY_STATIC (GST_CAT_DEFAULT);
 static PeasEngine *_engine = NULL;
 static GMutex load_lock;
 
+static inline void
+_import_enhancers (const gchar *enhancers_path)
+{
+  gchar **dir_paths = g_strsplit (enhancers_path, G_SEARCHPATH_SEPARATOR_S, 0);
+  guint i;
+
+  for (i = 0; dir_paths[i]; ++i)
+    peas_engine_add_search_path (_engine, dir_paths[i], NULL);
+
+  g_strfreev (dir_paths);
+}
+
 /*
  * clapper_enhancers_loader_initialize:
  *
@@ -44,13 +61,28 @@ void
 clapper_enhancers_loader_initialize (void)
 {
   const gchar *enhancers_path;
-  gchar **dir_paths;
-  guint i;
+  gchar *custom_path = NULL;
 
   GST_DEBUG_CATEGORY_INIT (GST_CAT_DEFAULT, "clapperenhancersloader", 0,
       "Clapper Enhancer Loader");
 
   enhancers_path = g_getenv ("CLAPPER_ENHANCERS_PATH");
+
+#ifdef G_OS_WIN32
+  if (!enhancers_path || *enhancers_path == '\0') {
+    gchar *win_base_dir;
+
+    win_base_dir = g_win32_get_package_installation_directory_of_module (
+        _enhancers_dll_handle);
+    /* FIXME: Avoid hardcoded major version */
+    custom_path = g_build_filename (win_base_dir,
+        "lib", "clapper-0.0", "enhancers", NULL);
+    enhancers_path = custom_path; // assign temporarily
+
+    g_free (win_base_dir);
+  }
+#endif
+
   if (!enhancers_path || *enhancers_path == '\0')
     enhancers_path = CLAPPER_ENHANCERS_PATH;
 
@@ -63,16 +95,18 @@ clapper_enhancers_loader_initialize (void)
   peas_engine_enable_loader (_engine, "python");
   peas_engine_enable_loader (_engine, "gjs");
 
-  dir_paths = g_strsplit (enhancers_path, G_SEARCHPATH_SEPARATOR_S, 0);
+  _import_enhancers (enhancers_path);
 
-  for (i = 0; dir_paths[i]; ++i)
-    peas_engine_add_search_path (_engine, dir_paths[i], NULL);
-
-  g_strfreev (dir_paths);
+  /* Support loading additional enhancers from non-default directory */
+  enhancers_path = g_getenv ("CLAPPER_ENHANCERS_EXTRA_PATH");
+  if (enhancers_path && *enhancers_path != '\0') {
+    GST_INFO ("Enhancers extra path: \"%s\"", enhancers_path);
+    _import_enhancers (enhancers_path);
+  }
 
   if (gst_debug_category_get_threshold (GST_CAT_DEFAULT) >= GST_LEVEL_INFO) {
     GListModel *list = (GListModel *) _engine;
-    guint n_items = g_list_model_get_n_items (list);
+    guint i, n_items = g_list_model_get_n_items (list);
 
     for (i = 0; i < n_items; ++i) {
       PeasPluginInfo *info = (PeasPluginInfo *) g_list_model_get_item (list, i);
@@ -83,6 +117,8 @@ clapper_enhancers_loader_initialize (void)
 
     GST_INFO ("Clapper enhancers initialized, found: %u", n_items);
   }
+
+  g_free (custom_path);
 }
 
 static inline gboolean

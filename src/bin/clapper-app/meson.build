@@ -53,8 +53,21 @@ configure_file(
   configuration: config_h,
 )
 
+visibility_conf = configuration_data()
+
+visibility_conf.set(
+  'CLAPPER_API',
+  'CLAPPER_APP_INTERNAL',
+)
+
+configure_file(
+  input: '../../lib/shared/clapper-api-visibility.h.in',
+  output: 'clapper-app-internal-visibility.h',
+  configuration: visibility_conf,
+)
+
 clapperapp_sources = [
-  'clapper-app-about-window.c',
+  'clapper-app-about-dialog.c',
   'clapper-app-application.c',
   'clapper-app-file-dialog.c',
   'clapper-app-headerbar.c',
@@ -77,8 +90,26 @@ clapperapp_sources = [
 ]
 clapperapp_c_args = [
   '-DG_LOG_DOMAIN="ClapperApp"',
+  '-DCLAPPER_APP_INTERNAL_COMPILATION',
   '-DGST_USE_UNSTABLE_API',
 ]
+
+is_windows = ['windows'].contains(host_machine.system())
+
+if is_windows
+  clapperapp_c_args += ['-D_WIN32_WINNT=_WIN32_WINNT_WIN8']
+  kernel32_dep = cc.find_library('kernel32', required: false)
+  if kernel32_dep.found() and cc.has_header('processthreadsapi.h')
+    clapperapp_deps += kernel32_dep
+    clapperapp_c_args += ['-DHAVE_WIN_PROCESS_THREADS_API']
+  endif
+  winmm_dep = cc.find_library('winmm', required: false)
+  if winmm_dep.found() and cc.has_header('timeapi.h')
+    clapperapp_deps += winmm_dep
+    clapperapp_c_args += ['-DHAVE_WIN_TIME_API']
+  endif
+  subdir('windows')
+endif
 
 executable(
   meson.project_name(),
@@ -90,7 +121,7 @@ executable(
   install_dir: bindir,
   win_subsystem: 'windows',
 )
-if ['windows'].contains(host_machine.system())
+if is_windows
   executable(
     meson.project_name() + '-console',
     clapperapp_sources,
